@@ -2,6 +2,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <fstream>
 
 using namespace std;
 
@@ -127,7 +128,6 @@ vector<vector<double>> find_base(vector<vector<double>> upper, int dim, vector<i
     vector<double> line(n);
     vector<vector<double>> base;
     vector<vector<double>> temp;
-    vector<double> partial_solution;
     int col = 0;
     for (int row=0; row<dim; row++) {
         while (binary_search(pivots.begin(), pivots.end(), col)) {col++;}
@@ -137,37 +137,40 @@ vector<vector<double>> find_base(vector<vector<double>> upper, int dim, vector<i
         base[row][col] = 1;
         col++;
     }
-
-//    for (int sol_no=0; sol_no<dim; sol_no++) {
-//
-//        for (int i=n-1; i>-1; i--) {
-//            partial_solution[i] = temp[i][m] / temp[i][i];
-//            for (int k=i-1;k>=0; k--) {
-//                temp[k][m] -= temp[k][i] * partial_solution[i];
-//            }
-//        }
-//    }
-
     return base;
+}
+
+tuple<int, vector<vector<double>>> read_matrices(const string &path) {
+        fstream infile;
+        infile.open(path);
+        if (infile.is_open()) {
+            int n;
+            infile  >> n;
+            vector<double> line(n+1,0);
+            vector<vector<double>> Ab(n, line);
+
+            for (int i=0; i<n; i++) {
+                for (int j=0; j<n+1; j++) {
+                    infile >> Ab[i][j];
+                }
+            }
+        return make_tuple(n,Ab);
+        } else {
+            std::cout << "File " << path << " NOT found or could not be opened!" << std::endl;
+        }
+        infile.close();
 }
 
 int main() {
     int n;
-    cin >> n;
+//    cin >> n;
+//
+//    vector<double> line(n+1,0);
+//    vector<vector<double>> Ab(n, line);
 
-    vector<double> line(n+1,0);
-    vector<vector<double>> Ab(n, line);
-
-    // Read input data
-    for (int i=0; i<n; i++) {
-        for (int j=0; j<n; j++) {
-            cin >> Ab[i][j];
-        }
-    }
-
-    for (int i=0; i<n; i++) {
-        cin >> Ab[i][n];
-    }
+    vector<vector<double>> Ab;
+    std::string path = "../test.txt";
+    tie(n, Ab) = read_matrices(path);
 
     print(Ab);
 
