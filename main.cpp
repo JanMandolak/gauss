@@ -156,20 +156,16 @@ tuple<int, vector<vector<double>>> read_matrices(const string &path) {
             }
         return make_tuple(n,Ab);
         } else {
-            std::cout << "File " << path << " NOT found or could not be opened!" << std::endl;
+            std::cout << "File " << path << " NOT found!" << std::endl;
         }
         infile.close();
 }
 
 int main() {
     int n;
-//    cin >> n;
-//
-//    vector<double> line(n+1,0);
-//    vector<vector<double>> Ab(n, line);
 
     vector<vector<double>> Ab;
-    std::string path = "../test.txt";
+    std::string path = "../test3.txt";
     tie(n, Ab) = read_matrices(path);
 
     print(Ab);
