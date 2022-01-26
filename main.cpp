@@ -6,6 +6,14 @@
 
 using namespace std;
 
+void print_help() {
+    std::cout << "Usage: Gauss [OPTION]...  [FILE]..." << std::endl
+              << "Options: " << std::endl <<
+              "-h, --help               to print help manual" << std::endl <<
+              "-o, --one-thread         use one thread only" << std::endl <<
+              "-m, --multiple-thread    use multiple threads, if available" << std::endl;
+}
+
 void print(vector< vector<double> > Ab) {
     int n = Ab.size();
     for (int i=0; i<n; i++) {
@@ -157,64 +165,80 @@ tuple<int, vector<vector<double>>> read_matrices(const string &path) {
         return make_tuple(n,Ab);
         } else {
             std::cout << "File " << path << " NOT found!" << std::endl;
+            return make_tuple(int(), vector<vector<double>>());
         }
         infile.close();
 }
 
-int main() {
-    int n;
-
-    vector<vector<double>> Ab;
-    std::string path = "../test3.txt";
-    tie(n, Ab) = read_matrices(path);
-
-    print(Ab);
-
-    std::tuple<int, double> a;
-    vector<vector<double>> upper;
-    vector<int> pivots;
-    tie(upper, pivots)= get_upper(Ab);
-
-    int dimension;
-    dimension = n - pivots.size();
+bool in_options(std::vector<std::string> &args, const std::string &str) {
+    return std::find(args.begin(), args.end(), str) != args.end();
+}
 
 
-    if (!frobenius(upper, dimension)) {
-        cout << "There is no solution. " ;
-        return 0;
-    }
-
-    vector<double> x(n);
-    vector<vector<double>> base;
-    x = provide_one_solution(upper,dimension, pivots);
-
-    if (dimension > 0) {
-        base = find_base(upper, dimension, pivots);
-    }
-
-    cout << "Result:\t";
-    cout << "K={[";
-    for (int i=0; i<n; i++) {
-        if (i<n-1) {cout << x[i] << " ";}
-        else {cout << x[i] << "]";}
-    }
-    if (dimension == 0) { cout << "}";}
+int main(int argc, char *argv[]) {
+    if (argc < 2) {print_help();}
     else {
-        cout << " + <";
-        for (int s=0; s<dimension; s++) {
-            cout << "[";
-            for (int i=0; i<n; i++) {
-                if (i<n-1) {cout << base[s][i] << " ";}
-                else {cout << base[s][i] << "]";}
-            }
-            if (s != dimension-1) {cout << ", ";}
+        std::vector<std::string> arguments(argv + 1, argv + argc);
+        if (in_options(arguments, "--help") || in_options(arguments, "-h")) {
+            print_help();
+//            add readme
+            return 0;
         }
-        cout << ">";
+
+        if (in_options(arguments, "--one-thread") || in_options(arguments, "-o")) {
+            std::string path;
+            std::cin >> path;
+
+            int n;
+            vector<vector<double>> Ab;
+
+            tie(n, Ab) = read_matrices(path);
+
+            print(Ab);
+
+            std::tuple<int, double> a;
+            vector<vector<double>> upper;
+            vector<int> pivots;
+            tie(upper, pivots) = get_upper(Ab);
+
+            int dimension;
+            dimension = n - pivots.size();
+
+
+            if (!frobenius(upper, dimension)) {
+                cout << "There is no solution. ";
+                return 0;
+            }
+
+            vector<double> x(n);
+            vector<vector<double>> base;
+            x = provide_one_solution(upper, dimension, pivots);
+
+            if (dimension > 0) {
+                base = find_base(upper, dimension, pivots);
+            }
+
+            cout << "Result:\t";
+            cout << "K={[";
+            for (int i = 0; i < n; i++) {
+                if (i < n - 1) { cout << x[i] << " "; }
+                else { cout << x[i] << "]"; }
+            }
+            if (dimension == 0) { cout << "}"; }
+            else {
+                cout << " + <";
+                for (int s = 0; s < dimension; s++) {
+                    cout << "[";
+                    for (int i = 0; i < n; i++) {
+                        if (i < n - 1) { cout << base[s][i] << " "; }
+                        else { cout << base[s][i] << "]"; }
+                    }
+                    if (s != dimension - 1) { cout << ", "; }
+                }
+                cout << ">";
+            }
+            cout << "}" << endl;
+            return 0;
+        }
     }
-    cout << "}" << endl;
-    return 0;
-
-
-
-
 }
