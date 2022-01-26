@@ -25,7 +25,7 @@ void print(vector< vector<double> > Ab) {
         }
         cout << "\n";
     }
-    cout << endl;
+//    cout << endl;
 }
 
 void swap_rows(vector< vector<double> > &Ab, const int row1, const int row2) {
@@ -148,24 +148,28 @@ vector<vector<double>> find_base(vector<vector<double>> upper, int dim, vector<i
     return base;
 }
 
-tuple<int, vector<vector<double>>> read_matrices(const string &path) {
+vector<tuple<int, vector<vector<double>>>> read_matrices(const string &path) {
+        vector<tuple<int, vector<vector<double>>>> problems;
         fstream infile;
         infile.open(path);
         if (infile.is_open()) {
-            int n;
-            infile  >> n;
-            vector<double> line(n+1,0);
-            vector<vector<double>> Ab(n, line);
+                int n;
+                while (true) {
+                    if (!(infile >> n)) break;
+                    vector<double> line(n + 1, 0);
+                    vector<vector<double>> Ab(n, line);
 
-            for (int i=0; i<n; i++) {
-                for (int j=0; j<n+1; j++) {
-                    infile >> Ab[i][j];
+                    for (int i = 0; i < n; i++) {
+                        for (int j = 0; j < n + 1; j++) {
+                            infile >> Ab[i][j];
+                        }
+                    }
+                    problems.emplace_back(n, Ab);
                 }
-            }
-        return make_tuple(n,Ab);
+            return problems;
         } else {
             std::cout << "File " << path << " NOT found!" << std::endl;
-            return make_tuple(int(), vector<vector<double>>());
+            return problems;
         }
         infile.close();
 }
@@ -176,7 +180,10 @@ bool in_options(std::vector<std::string> &args, const std::string &str) {
 
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {print_help();}
+//    if (argc < 2) {
+    if (false) {
+        print_help();
+        return 0;}
     else {
         std::vector<std::string> arguments(argv + 1, argv + argc);
         if (in_options(arguments, "--help") || in_options(arguments, "-h")) {
@@ -185,59 +192,67 @@ int main(int argc, char *argv[]) {
             return 0;
         }
 
-        if (in_options(arguments, "--one-thread") || in_options(arguments, "-o")) {
+//        if (in_options(arguments, "--one-thread") || in_options(arguments, "-o")) {
+        if (true) {
             std::string path;
-            std::cin >> path;
+            path = "multi.txt";
+//            std::cin >> path;
+            vector<tuple<int, vector<vector<double>>>> problems = read_matrices(path);
 
-            int n;
-            vector<vector<double>> Ab;
+            while (!problems.empty())
+            {
+                int n;
+                vector<vector<double>> Ab;
+                tie(n, Ab) = problems.back();
+                problems.pop_back();
 
-            tie(n, Ab) = read_matrices(path);
+                print(Ab);
 
-            print(Ab);
+                std::tuple<int, double> a;
+                vector<vector<double>> upper;
+                vector<int> pivots;
+                tie(upper, pivots) = get_upper(Ab);
 
-            std::tuple<int, double> a;
-            vector<vector<double>> upper;
-            vector<int> pivots;
-            tie(upper, pivots) = get_upper(Ab);
-
-            int dimension;
-            dimension = n - pivots.size();
+                int dimension;
+                dimension = n - pivots.size();
 
 
-            if (!frobenius(upper, dimension)) {
-                cout << "There is no solution. ";
-                return 0;
-            }
-
-            vector<double> x(n);
-            vector<vector<double>> base;
-            x = provide_one_solution(upper, dimension, pivots);
-
-            if (dimension > 0) {
-                base = find_base(upper, dimension, pivots);
-            }
-
-            cout << "Result:\t";
-            cout << "K={[";
-            for (int i = 0; i < n; i++) {
-                if (i < n - 1) { cout << x[i] << " "; }
-                else { cout << x[i] << "]"; }
-            }
-            if (dimension == 0) { cout << "}"; }
-            else {
-                cout << " + <";
-                for (int s = 0; s < dimension; s++) {
-                    cout << "[";
-                    for (int i = 0; i < n; i++) {
-                        if (i < n - 1) { cout << base[s][i] << " "; }
-                        else { cout << base[s][i] << "]"; }
-                    }
-                    if (s != dimension - 1) { cout << ", "; }
+                if (!frobenius(upper, dimension)) {
+                    cout << "There is no solution. \n\n";
                 }
-                cout << ">";
+                else {
+                    vector<double> x(n);
+                    vector<vector<double>> base;
+                    x = provide_one_solution(upper, dimension, pivots);
+
+                    if (dimension > 0) {
+                        base = find_base(upper, dimension, pivots);
+                    }
+
+                    cout << "Result:\t";
+                    cout << "K={[";
+                    for (int i = 0; i < n; i++) {
+                        if (i < n - 1) { cout << x[i] << " "; }
+                        else { cout << x[i] << "]"; }
+                    }
+                    if (dimension == 0) { cout << "}"; }
+                    else {
+                        cout << " + <";
+                        for (int s = 0; s < dimension; s++) {
+                            cout << "[";
+                            for (int i = 0; i < n; i++) {
+                                if (i < n - 1) { cout << base[s][i] << " "; }
+                                else { cout << base[s][i] << "]"; }
+                            }
+                            if (s != dimension - 1) { cout << ", "; }
+                        }
+                        cout << ">";
+                    }
+                    cout << "}\n" << endl;
+                }
+
+
             }
-            cout << "}" << endl;
             return 0;
         }
     }
