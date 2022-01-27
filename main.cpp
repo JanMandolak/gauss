@@ -4,6 +4,11 @@
 #include <algorithm>
 #include <fstream>
 
+template <typename TimePoint>
+std::chrono::milliseconds to_ms(TimePoint tp) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(tp);
+}
+
 using namespace std;
 
 void print_help() {
@@ -12,6 +17,16 @@ void print_help() {
               "-h, --help               to print help manual" << std::endl <<
               "-o, --one-thread         use one thread only" << std::endl <<
               "-m, --multiple-thread    use multiple threads, if available" << std::endl;
+}
+
+int gcd(int a, int b) {
+    if (a == 0 || b == 0)
+        return 0;
+    else if (a == b)
+        return a;
+    else if (a > b)
+        return gcd(a-b, b);
+    else return gcd(a, b-a);
 }
 
 void print(vector< vector<double> > Ab) {
@@ -56,12 +71,19 @@ void null_under(vector< vector<double> > &Ab, const int upper_row, const int lef
     int n = Ab.size();
 
     for (int k=upper_row+1; k<n; k++) {
-        double multiplicator = -Ab[k][left_col] / Ab[upper_row][left_col];
-        for (int j=upper_row; j<n+1; j++) {
-            if (upper_row==j) {
-                Ab[k][j] = 0;
-            } else {
-                Ab[k][j] += multiplicator * Ab[upper_row][j];
+        if ((Ab[k][left_col] != 0) && (Ab[upper_row][left_col]))
+        {
+            int cdiv;
+            cdiv = gcd(abs(Ab[upper_row][left_col]), abs(Ab[k][left_col]));
+            double multiplicator1 = -Ab[k][left_col] / cdiv;
+            double multiplicator2 = Ab[upper_row][left_col] / cdiv;
+            for (int j = upper_row; j < n + 1; j++) {
+                if (upper_row == j) {
+                    Ab[k][j] = 0;
+                } else {
+                    Ab[k][j] *= multiplicator2;
+                    Ab[k][j] += multiplicator1 * Ab[upper_row][j];
+                }
             }
         }
     }
@@ -148,8 +170,8 @@ vector<vector<double>> find_base(vector<vector<double>> upper, int dim, vector<i
     return base;
 }
 
-vector<tuple<int, vector<vector<double>>>> read_matrices(const string &path) {
-        vector<tuple<int, vector<vector<double>>>> problems;
+deque<tuple<int, vector<vector<double>>>> read_matrices(const string &path) {
+        deque<tuple<int, vector<vector<double>>>> problems;
         fstream infile;
         infile.open(path);
         if (infile.is_open()) {
@@ -166,12 +188,65 @@ vector<tuple<int, vector<vector<double>>>> read_matrices(const string &path) {
                     }
                     problems.emplace_back(n, Ab);
                 }
+            infile.close();
             return problems;
         } else {
             std::cout << "File " << path << " NOT found!" << std::endl;
             return problems;
         }
-        infile.close();
+}
+
+void solve_problems(deque<tuple<int, vector<vector<double>>>> & problems) {
+    int n;
+    vector<vector<double>> Ab;
+    tie(n, Ab) = problems.front();
+    problems.pop_front();
+
+    print(Ab);
+
+    std::tuple<int, double> a;
+    vector<vector<double>> upper;
+    vector<int> pivots;
+    tie(upper, pivots) = get_upper(Ab);
+
+    int dimension;
+    dimension = n - pivots.size();
+
+
+    if (!frobenius(upper, dimension)) {
+        cout << "There is no solution. \n\n";
+    }
+    else {
+        vector<double> x(n);
+        vector<vector<double>> base;
+        x = provide_one_solution(upper, dimension, pivots);
+
+        if (dimension > 0) {
+            base = find_base(upper, dimension, pivots);
+        }
+
+        cout << "Result:\t";
+        cout << "K={[";
+        for (int i = 0; i < n; i++) {
+            if (i < n - 1) { cout << x[i] << " "; }
+            else { cout << x[i] << "]"; }
+        }
+        if (dimension == 0) { cout << "}"; }
+        else {
+            cout << " + <";
+            for (int s = 0; s < dimension; s++) {
+                cout << "[";
+                for (int i = 0; i < n; i++) {
+                    if (i < n - 1) { cout << base[s][i] << " "; }
+                    else { cout << base[s][i] << "]"; }
+                }
+                if (s != dimension - 1) { cout << ", "; }
+            }
+            cout << ">";
+        }
+        cout << "}\n" << endl;
+    }
+
 }
 
 bool in_options(std::vector<std::string> &args, const std::string &str) {
@@ -180,8 +255,8 @@ bool in_options(std::vector<std::string> &args, const std::string &str) {
 
 
 int main(int argc, char *argv[]) {
-//    if (argc < 2) {
-    if (false) {
+    if (argc < 2) {
+//    if (false) { // for debugging
         print_help();
         return 0;}
     else {
@@ -192,67 +267,38 @@ int main(int argc, char *argv[]) {
             return 0;
         }
 
-//        if (in_options(arguments, "--one-thread") || in_options(arguments, "-o")) {
-        if (true) {
+        else if (in_options(arguments, "--one-thread") || in_options(arguments, "-o")) {
+//        if (true) { // for debugging
             std::string path;
-            path = "multi.txt";
-//            std::cin >> path;
-            vector<tuple<int, vector<vector<double>>>> problems = read_matrices(path);
+//            path = "../large.txt";  // for debugging
+            std::cout << "Type path to the input file:\n";
+            std::cin >> path;
+            auto start = std::chrono::high_resolution_clock::now();
+            deque<tuple<int, vector<vector<double>>>> problems = read_matrices(path);
 
-            while (!problems.empty())
-            {
-                int n;
-                vector<vector<double>> Ab;
-                tie(n, Ab) = problems.back();
-                problems.pop_back();
+            while (!problems.empty()) {solve_problems(problems);}
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Needed " << to_ms(end - start).count() << " ms to finish.\n";
+            return 0;
+        }
 
-                print(Ab);
+        else if (in_options(arguments, "--multiple-thread") || in_options(arguments, "-m")) {
+//        if (true) { // for debugging
+            std::string path;
+//            path = "../large.txt";  // for debugging
+            std::cout << "Type path to the input file:\n";
+            std::cin >> path;
+            auto start = std::chrono::high_resolution_clock::now();
+            deque<tuple<int, vector<vector<double>>>> problems = read_matrices(path);
 
-                std::tuple<int, double> a;
-                vector<vector<double>> upper;
-                vector<int> pivots;
-                tie(upper, pivots) = get_upper(Ab);
+            while (!problems.empty()) {solve_problems(problems);}
+            auto end = std::chrono::high_resolution_clock::now();
+            std::cout << "Needed " << to_ms(end - start).count() << " ms to finish.\n";
+            return 0;
+        }
 
-                int dimension;
-                dimension = n - pivots.size();
-
-
-                if (!frobenius(upper, dimension)) {
-                    cout << "There is no solution. \n\n";
-                }
-                else {
-                    vector<double> x(n);
-                    vector<vector<double>> base;
-                    x = provide_one_solution(upper, dimension, pivots);
-
-                    if (dimension > 0) {
-                        base = find_base(upper, dimension, pivots);
-                    }
-
-                    cout << "Result:\t";
-                    cout << "K={[";
-                    for (int i = 0; i < n; i++) {
-                        if (i < n - 1) { cout << x[i] << " "; }
-                        else { cout << x[i] << "]"; }
-                    }
-                    if (dimension == 0) { cout << "}"; }
-                    else {
-                        cout << " + <";
-                        for (int s = 0; s < dimension; s++) {
-                            cout << "[";
-                            for (int i = 0; i < n; i++) {
-                                if (i < n - 1) { cout << base[s][i] << " "; }
-                                else { cout << base[s][i] << "]"; }
-                            }
-                            if (s != dimension - 1) { cout << ", "; }
-                        }
-                        cout << ">";
-                    }
-                    cout << "}\n" << endl;
-                }
-
-
-            }
+        else  {
+            print_help();
             return 0;
         }
     }
